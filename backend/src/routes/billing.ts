@@ -59,6 +59,9 @@ router.post('/checkout', authenticateToken, async (req: AuthRequest, res: Respon
       }
     });
 
+    const settings = await prisma.systemSettings.findUnique({ where: { id: 'singleton' } });
+    const price = settings?.licensePrice || 15000;
+
     const preference = new Preference(mpClient);
     const result = await preference.create({
       body: {
@@ -67,7 +70,7 @@ router.post('/checkout', authenticateToken, async (req: AuthRequest, res: Respon
             id: 'license_annual',
             title: 'Suscripción Anual PharmaShare',
             quantity: 1,
-            unit_price: 15000, // ARS
+            unit_price: price,
             currency_id: 'ARS'
           }
         ],
@@ -117,14 +120,18 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
         // 3. Generate Electronic Invoice via AFIP
         try {
-          const lastVoucher = await afip.ElectronicBilling.getLastVoucher(1, 11); // Punto de venta 1, Tipo Comprobante 11 (Factura C)
+          const settings = await prisma.systemSettings.findUnique({ where: { id: 'singleton' } });
+          const ptoVta = settings?.afipPtoVta || 1;
+          const price = settings?.licensePrice || 15000;
+
+          const lastVoucher = await afip.ElectronicBilling.getLastVoucher(ptoVta, 11); // Tipo Comprobante 11 (Factura C)
           const newVoucherNumber = lastVoucher + 1;
           
           const date = new Date(Date.now() - ((new Date()).getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
           const invoiceData = {
             'CantReg': 1,  
-            'PtoVta': 1,  
+            'PtoVta': ptoVta,  
             'CbteTipo': 11, // 11 = Factura C
             'Concepto': 2, // 2 = Servicios
             'DocTipo': 80, // 80 = CUIT
@@ -132,9 +139,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
             'CbteDesde': newVoucherNumber,
             'CbteHasta': newVoucherNumber,
             'CbteFch': parseInt(date.replace(/-/g, '')),
-            'ImpTotal': 15000,
+            'ImpTotal': price,
             'ImpTotConc': 0,
-            'ImpNeto': 15000,
+            'ImpNeto': price,
             'ImpOpEx': 0,
             'ImpIVA': 0,
             'ImpTrib': 0,

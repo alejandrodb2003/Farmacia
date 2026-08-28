@@ -20,11 +20,14 @@ initSocket(httpServer);
 app.use(cors());
 app.use(express.json());
 
+import { authenticateToken } from './middleware/auth';
+import { checkLicense } from './middleware/checkLicense';
+
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/medications', medicationRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/network', networkRoutes);
+app.use('/api/medications', authenticateToken, medicationRoutes);
+app.use('/api/inventory', authenticateToken, checkLicense, inventoryRoutes);
+app.use('/api/network', authenticateToken, checkLicense, networkRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);

@@ -126,19 +126,19 @@ router.post('/reserve', async (req: AuthRequest, res: Response) => {
 // 3. Complete a reservation with PIN
 router.post('/reservations/:id/complete', async (req: AuthRequest, res: Response) => {
   try {
-    const pharmacyId = req.user?.pharmacyId;
+    const pharmacyId = req.user?.pharmacyId as string;
     const { id } = req.params;
     const { pin } = req.body;
 
     if (!pharmacyId) return res.status(403).json({ error: 'Unauthorized' });
 
-    const reservation = await prisma.reservation.findUnique({
-      where: { id },
+    const reservation = (await prisma.reservation.findUnique({
+      where: { id: id as string },
       include: { inventoryItem: true }
-    });
+    })) as any;
 
     if (!reservation) return res.status(404).json({ error: 'Reservation not found' });
-    if (reservation.inventoryItem.pharmacyId !== pharmacyId) return res.status(403).json({ error: 'Unauthorized' });
+    if (reservation.inventoryItem?.pharmacyId !== pharmacyId) return res.status(403).json({ error: 'Unauthorized' });
     if (reservation.status !== 'PENDING') return res.status(400).json({ error: 'Reservation is not pending' });
 
     if (reservation.securityPin !== pin) {
@@ -147,7 +147,7 @@ router.post('/reservations/:id/complete', async (req: AuthRequest, res: Response
 
     await prisma.$transaction([
       prisma.reservation.update({
-        where: { id },
+        where: { id: id as string },
         data: { status: 'FULFILLED' }
       }),
       prisma.inventoryItem.update({
@@ -168,14 +168,14 @@ router.get('/reservations/:id/ticket', async (req: AuthRequest, res: Response) =
   try {
     const { id } = req.params;
 
-    const reservation = await prisma.reservation.findUnique({
-      where: { id },
+    const reservation = (await prisma.reservation.findUnique({
+      where: { id: id as string },
       include: {
         inventoryItem: {
           include: { medication: true, pharmacy: true }
         }
       }
-    });
+    })) as any;
 
     if (!reservation) return res.status(404).send('Not found');
     const reqPharmacy = await prisma.pharmacy.findUnique({ where: { id: reservation.requestingPharmacyId } });
@@ -228,7 +228,7 @@ router.get('/reservations/incoming', async (req: AuthRequest, res: Response) => 
   try {
     const pharmacyId = req.user?.pharmacyId;
 
-    const reservations = await prisma.reservation.findMany({
+    const reservations = (await prisma.reservation.findMany({
       where: {
         inventoryItem: {
           pharmacyId,
@@ -240,7 +240,7 @@ router.get('/reservations/incoming', async (req: AuthRequest, res: Response) => 
         }
       },
       orderBy: { createdAt: 'desc' }
-    });
+    })) as any[];
 
     // We also need the requesting pharmacy name for the frontend
     const reservationsWithPharmacy = await Promise.all(reservations.map(async (r) => {

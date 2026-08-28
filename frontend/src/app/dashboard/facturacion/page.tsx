@@ -13,7 +13,7 @@ export default function FacturacionPage() {
   const fetchLicense = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/billing/license', {
+      const res = await fetch('/api/billing/license', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -31,7 +31,7 @@ export default function FacturacionPage() {
     setPaying(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/billing/checkout', {
+      const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -107,7 +107,7 @@ export default function FacturacionPage() {
               disabled={paying}
               className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
             >
-              {paying ? 'Generando link de pago...' : 'Pagar Suscripción Anual ($15.000 ARS) con MercadoPago'}
+              {paying ? 'Generando link de pago...' : 'Pagar Suscripción Anual con MercadoPago'}
             </button>
           </div>
         )}

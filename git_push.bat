@@ -1,4 +1,4 @@
 @echo off
 git add .
-git commit -m "Implement Logistics PIN and PDF validation"
+git commit -m "Refactor Billing, AFIP dynamic config, License middleware"
 git push origin main
