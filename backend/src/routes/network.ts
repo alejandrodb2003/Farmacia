@@ -16,19 +16,33 @@ router.get('/expiring', async (req: AuthRequest, res: Response) => {
     const sixMonthsFromNow = new Date();
     sixMonthsFromNow.setMonth(today.getMonth() + 6);
 
-    const expiringItems = await prisma.inventoryItem.findMany({
-      where: {
-        pharmacyId: {
-          not: pharmacyId, // Exclude own pharmacy
-        },
-        quantity: {
-          gt: 0, // Only items in stock
-        },
-        expirationDate: {
-          gte: today, // Not already expired (optional, depending on business rules)
-          lte: sixMonthsFromNow,
-        },
+    const { search } = req.query;
+
+    let whereClause: any = {
+      pharmacyId: {
+        not: pharmacyId, // Exclude own pharmacy
       },
+      quantity: {
+        gt: 0, // Only items in stock
+      },
+      expirationDate: {
+        gte: today, // Not already expired
+        lte: sixMonthsFromNow,
+      },
+    };
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      whereClause.medication = {
+        OR: [
+          { name: { contains: search } },
+          { genericName: { contains: search } },
+          { laboratory: { contains: search } }
+        ]
+      };
+    }
+
+    const expiringItems = await prisma.inventoryItem.findMany({
+      where: whereClause,
       include: {
         medication: true,
         pharmacy: {

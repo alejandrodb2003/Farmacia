@@ -116,10 +116,12 @@ model Reservation {
 }
 
 model SystemSettings {
-  id             String  @id @default("singleton")
-  mpAccessToken  String?
+  id             String   @id @default(uuid())
+  mpAccessToken  String?  @db.Text
   afipCuit       String?
-  afipCert       String?
-  afipKey        String?
+  afipCert       String?  @db.Text
+  afipKey        String?  @db.Text
+  licensePrice   Float    @default(10000)
+  afipPtoVta     Int      @default(1)
   updatedAt      DateTime @updatedAt
 }

@@ -4,15 +4,21 @@ import { useState, useEffect } from 'react';
 export default function RedVencimientosPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     fetchExpiringItems();
   }, []);
 
-  const fetchExpiringItems = async () => {
+  const fetchExpiringItems = async (searchQuery = '') => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/network/expiring', {
+      const url = searchQuery 
+        ? `/api/network/expiring?search=${encodeURIComponent(searchQuery)}` 
+        : `/api/network/expiring`;
+      
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -26,12 +32,17 @@ export default function RedVencimientosPage() {
     }
   };
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    fetchExpiringItems(search);
+  };
+
   const handleReserve = async (itemId: string, medicationName: string, pharmacyName: string) => {
     if (!confirm(`¿Derivar cliente a ${pharmacyName} para buscar ${medicationName}? Esto enviará una alerta a la farmacia.`)) return;
     
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:3001/api/network/reserve', {
+      const res = await fetch('/api/network/reserve', {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -42,7 +53,7 @@ export default function RedVencimientosPage() {
 
       if (res.ok) {
         alert('¡Cliente derivado con éxito! Se ha notificado a la farmacia.');
-        fetchExpiringItems(); // refresh list
+        fetchExpiringItems(search); // refresh list
       } else {
         alert('Error al reservar el medicamento.');
       }
@@ -53,11 +64,23 @@ export default function RedVencimientosPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Red de Vencimientos</h1>
           <p className="text-slate-500">Medicamentos próximos a vencer (&lt; 6 meses) en otras farmacias de la red.</p>
         </div>
+        <form onSubmit={handleSearchSubmit} className="flex gap-2">
+          <input 
+            type="text"
+            placeholder="Buscar medicamento, droga o laboratorio..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-4 py-2 border border-slate-300 rounded-lg w-full md:w-80 focus:ring-emerald-500 focus:border-emerald-500"
+          />
+          <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-emerald-700 transition">
+            Buscar
+          </button>
+        </form>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -6,6 +6,7 @@ import inventoryRoutes from './routes/inventory';
 import networkRoutes from './routes/network';
 import billingRoutes from './routes/billing';
 import settingsRoutes from './routes/settings';
+import adminRoutes from './routes/admin';
 import { initSocket } from './socket';
 import { createServer } from 'http';
 
@@ -25,6 +26,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/network', networkRoutes);
 app.use('/api/billing', billingRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is running' });
