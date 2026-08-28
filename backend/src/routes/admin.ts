@@ -48,7 +48,7 @@ router.post('/pharmacies', authenticateToken, requireRole('SUPERADMIN'), async (
 
 router.put('/pharmacies/:id', authenticateToken, requireRole('SUPERADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, cuit, email, phone, address, city } = req.body;
     const pharmacy = await prisma.pharmacy.update({
       where: { id },
@@ -108,7 +108,7 @@ router.post('/users', authenticateToken, requireRole('SUPERADMIN'), async (req: 
 
 router.put('/users/:id', authenticateToken, requireRole('SUPERADMIN'), async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, email, role, pharmacyId, password } = req.body;
     
     let dataToUpdate: any = { name, email, role, pharmacyId };
