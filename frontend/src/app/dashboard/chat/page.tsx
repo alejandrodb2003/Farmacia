@@ -79,6 +79,39 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
+    if (activeChat === 'global') return;
+    
+    // Fetch history for private chat
+    const fetchHistory = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/chat/messages/${activeChat}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          // Merge history with whatever might already be in memory
+          setPrivateMessages(prev => ({
+            ...prev,
+            [activeChat]: data.map((m: any) => ({
+              id: m.id,
+              fromSocketId: m.senderId === activeChat ? activeChat : socket?.id,
+              toSocketId: m.senderId === activeChat ? socket?.id : activeChat,
+              message: m.content,
+              timestamp: m.createdAt,
+              status: m.status
+            }))
+          }));
+        }
+      } catch (err) {
+        console.error('Error fetching chat history', err);
+      }
+    };
+    
+    fetchHistory();
+  }, [activeChat]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [globalMessages, privateMessages, activeChat]);
 
@@ -157,8 +190,13 @@ export default function ChatPage() {
                         <div className="text-xs font-bold text-blue-600 mb-1">{msg.pharmacyName} <span className="font-normal text-slate-500">({msg.userName})</span></div>
                       )}
                       <div>{msg.message}</div>
-                      <div className={`text-[10px] text-right mt-1 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                      <div className={`text-[10px] text-right mt-1 flex items-center justify-end gap-1 ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
                         {new Date(msg.timestamp).toLocaleTimeString()}
+                        {isMe && activeChat !== 'global' && (
+                          <span className={msg.status === 'READ' ? 'text-blue-300 font-bold' : ''}>
+                            {msg.status === 'SENT' ? '✓' : '✓✓'}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
