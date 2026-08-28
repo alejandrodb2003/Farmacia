@@ -1,0 +1,125 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PHARMACY_ADMIN
+  SUPERADMIN
+}
+
+enum LicenseStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum ReservationStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+}
+
+model Pharmacy {
+  id          String   @id @default(uuid())
+  name        String
+  cuit        String   @unique
+  email       String   @unique
+  address     String?
+  city        String?
+  province    String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       User[]
+  inventory   InventoryItem[]
+  licenses    License[]
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        Role     @default(PHARMACY_ADMIN)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pharmacyId  String?
+  pharmacy    Pharmacy? @relation(fields: [pharmacyId], references: [id])
+}
+
+// Global Medication Catalog (Collaborative)
+model Medication {
+  id              String   @id @default(uuid())
+  barcode         String   @unique // GTIN / EAN
+  name            String   // Commercial name
+  genericName     String?  // Active principle
+  laboratory      String?
+  presentation    String?  // e.g., "Comp. x 30", "Jarabe 100ml"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  inventoryItems  InventoryItem[]
+}
+
+model InventoryItem {
+  id              String   @id @default(uuid())
+  batch           String?  // Lote
+  expirationDate  DateTime // Fecha de vencimiento
+  quantity        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pharmacyId      String
+  pharmacy        Pharmacy @relation(fields: [pharmacyId], references: [id])
+  medicationId    String
+  medication      Medication @relation(fields: [medicationId], references: [id])
+
+  // If a pharmacy sends a customer/cadete to another pharmacy for this specific item, we can track reservations here or in a separate model
+  reservations    Reservation[]
+}
+
+model License {
+  id          String        @id @default(uuid())
+  startDate   DateTime
+  endDate     DateTime
+  status      LicenseStatus @default(ACTIVE)
+  mpPaymentId String?       // MercadoPago Payment ID
+  afipInvoice String?       // Link to AFIP Invoice PDF or CAE
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  pharmacyId  String
+  pharmacy    Pharmacy      @relation(fields: [pharmacyId], references: [id])
+}
+
+model Reservation {
+  id              String            @id @default(uuid())
+  status          ReservationStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  requestingPharmacyId String       // Pharmacy that sends the customer
+  inventoryItemId      String
+  inventoryItem        InventoryItem @relation(fields: [inventoryItemId], references: [id])
+}
+
+model SystemSettings {
+  id             String  @id @default("singleton")
+  mpAccessToken  String?
+  afipCuit       String?
+  afipCert       String?
+  afipKey        String?
+  updatedAt      DateTime @updatedAt
+}

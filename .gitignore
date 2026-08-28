@@ -1,0 +1,10 @@
+node_modules/
+.next/
+dist/
+build/
+.env
+dev.db
+*.zip
+deploy.log
+backend_node_modules_tmp/
+frontend_node_modules_tmp/
