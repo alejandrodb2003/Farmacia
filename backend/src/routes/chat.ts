@@ -15,7 +15,7 @@ router.get('/conversations', async (req: AuthRequest, res: Response) => {
     const conversations = await prisma.conversation.findMany({
       where: {
         members: {
-          some: { userId }
+          some: { userId: userId as string }
         }
       },
       include: {
@@ -49,8 +49,8 @@ router.get('/messages/:peerUserId', async (req: AuthRequest, res: Response) => {
       where: {
         type: 'DIRECT',
         AND: [
-          { members: { some: { userId: myUserId } } },
-          { members: { some: { userId: peerUserId } } }
+          { members: { some: { userId: myUserId as string } } },
+          { members: { some: { userId: peerUserId as string } } }
         ]
       }
     });

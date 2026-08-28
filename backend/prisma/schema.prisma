@@ -150,10 +150,18 @@ model License {
   pharmacy    Pharmacy      @relation(fields: [pharmacyId], references: [id])
 }
 
+enum PickupMethod {
+  CLIENTE
+  CADETE
+}
+
 model Reservation {
   id              String            @id @default(uuid())
   status          ReservationStatus @default(PENDING)
   notes           String?
+  pickupMethod    PickupMethod      @default(CLIENTE)
+  personName      String?
+  securityPin     String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 

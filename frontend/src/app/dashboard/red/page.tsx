@@ -5,6 +5,12 @@ export default function RedVencimientosPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  // Modal State
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [pickupMethod, setPickupMethod] = useState<'CLIENTE' | 'CADETE'>('CLIENTE');
+  const [personName, setPersonName] = useState('');
+  const [reservationResult, setReservationResult] = useState<any>(null); // To show PIN & Ticket button
 
   useEffect(() => {
     fetchExpiringItems();
@@ -37,8 +43,16 @@ export default function RedVencimientosPage() {
     fetchExpiringItems(search);
   };
 
-  const handleReserve = async (itemId: string, medicationName: string, pharmacyName: string) => {
-    if (!confirm(`¿Derivar cliente a ${pharmacyName} para buscar ${medicationName}? Esto enviará una alerta a la farmacia.`)) return;
+  const openReserveModal = (item: any) => {
+    setSelectedItem(item);
+    setPickupMethod('CLIENTE');
+    setPersonName('');
+    setReservationResult(null);
+  };
+
+  const submitReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedItem) return;
     
     try {
       const token = localStorage.getItem('token');
@@ -48,11 +62,17 @@ export default function RedVencimientosPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ inventoryItemId: itemId, notes: 'Cliente derivado por cercanía.' })
+        body: JSON.stringify({ 
+          inventoryItemId: selectedItem.id, 
+          notes: 'Cliente/Cadete derivado por sistema logístico.',
+          pickupMethod,
+          personName
+        })
       });
 
       if (res.ok) {
-        alert('¡Cliente derivado con éxito! Se ha notificado a la farmacia.');
+        const data = await res.json();
+        setReservationResult(data.reservation); // Contains the PIN
         fetchExpiringItems(search); // refresh list
       } else {
         alert('Error al reservar el medicamento.');
@@ -62,17 +82,38 @@ export default function RedVencimientosPage() {
     }
   };
 
+  const closeAndReset = () => {
+    setSelectedItem(null);
+    setReservationResult(null);
+  };
+
+  const printTicket = () => {
+    if (!reservationResult?.id) return;
+    const token = localStorage.getItem('token');
+    // Open in new tab, but we need to pass token. Usually PDF endpoints can't easily be opened in new tab with Bearer tokens without a cookie.
+    // For now, let's fetch it as blob and open.
+    fetch(`/api/network/reservations/${reservationResult.id}/ticket`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.blob())
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    })
+    .catch(err => console.error(err));
+  };
+
   return (
-    <div className="p-8">
+    <div className="p-8 relative">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Red de Vencimientos</h1>
-          <p className="text-slate-500">Medicamentos próximos a vencer (&lt; 6 meses) en otras farmacias de la red.</p>
+          <p className="text-slate-500">Medicamentos disponibles en otras farmacias de la red.</p>
         </div>
         <form onSubmit={handleSearchSubmit} className="flex gap-2">
           <input 
             type="text"
-            placeholder="Buscar medicamento, droga o laboratorio..."
+            placeholder="Buscar medicamento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="px-4 py-2 border border-slate-300 rounded-lg w-full md:w-80 focus:ring-emerald-500 focus:border-emerald-500"
@@ -110,10 +151,10 @@ export default function RedVencimientosPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">Stock: {item.quantity}</span>
                   <button 
-                    onClick={() => handleReserve(item.id, item.medication.name, item.pharmacy.name)}
+                    onClick={() => openReserveModal(item)}
                     className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-medium px-4 py-2 rounded-lg transition"
                   >
-                    Derivar Cliente
+                    Coordinar Retiro
                   </button>
                 </div>
               </div>
@@ -121,6 +162,94 @@ export default function RedVencimientosPage() {
           ))
         )}
       </div>
+
+      {/* Reservation Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6">
+              {!reservationResult ? (
+                <>
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">Coordinar Retiro Logístico</h2>
+                  <p className="text-slate-500 text-sm mb-6">
+                    Se reservará <span className="font-bold">{selectedItem.medication.name}</span> en <span className="font-bold">{selectedItem.pharmacy.name}</span>.
+                  </p>
+                  
+                  <form onSubmit={submitReservation} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Método de Retiro</label>
+                      <select 
+                        value={pickupMethod}
+                        onChange={(e) => setPickupMethod(e.target.value as any)}
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      >
+                        <option value="CLIENTE">El Cliente va personalmente</option>
+                        <option value="CADETE">Mandar un Cadete / Repartidor</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de quien retira</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={personName}
+                        onChange={(e) => setPersonName(e.target.value)}
+                        placeholder="Ej. Juan Pérez"
+                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="pt-4 flex gap-3">
+                      <button 
+                        type="button" 
+                        onClick={closeAndReset}
+                        className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"
+                      >
+                        Confirmar y Generar PIN
+                      </button>
+                    </div>
+                  </form>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                    ✓
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Reserva Confirmada!</h2>
+                  <p className="text-slate-500 mb-6">El retiro ha sido coordinado con {selectedItem.pharmacy.name}.</p>
+                  
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 mb-6">
+                    <p className="text-sm font-bold text-slate-500 uppercase mb-2">PIN DE SEGURIDAD</p>
+                    <p className="text-5xl font-black text-slate-800 tracking-widest">{reservationResult.securityPin}</p>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <button 
+                      onClick={printTicket}
+                      className="w-full px-4 py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 flex justify-center items-center gap-2"
+                    >
+                      🖨️ Imprimir Ticket PDF
+                    </button>
+                    <button 
+                      onClick={closeAndReset}
+                      className="w-full px-4 py-3 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
