@@ -7,9 +7,7 @@ const ACTIVE_PRINCIPLES = ['Ibuprofeno', 'Paracetamol', 'Amoxicilina', 'Losartan
 const LABS = ['Bayer', 'Roemmers', 'Raffo', 'Bagó', 'Elea', 'Casasco', 'Gador', 'Baliarda', 'Bernabó', 'Montpellier'];
 const PRESENTATIONS = ['Comp. x 10', 'Comp. x 30', 'Comp. x 60', 'Jarabe 100ml', 'Gotas 20ml', 'Inyectable'];
 
-function getRandomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+const getRandomItem = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
 
 async function main() {
   console.log('Seeding Database...');
